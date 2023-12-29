@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>test</title>
+<style>
+	.base-one-circle {
+    width: 250px;
+    height: 100px;
+    position: relative;
+    background: radial-gradient(circle at right top, transparent 10px,  #28A4F2 0) top left / 60px 51% no-repeat,
+      radial-gradient(circle at right bottom, transparent 10px,  #28A4F2 0) bottom left /60px 51% no-repeat,
+      radial-gradient(circle at left top, transparent 10px, #eeeeee 0) top right /190px 51% no-repeat,
+      radial-gradient(circle at left bottom, transparent 10px, #eeeeee 0) bottom right /190px 51% no-repeat;
+    filter: drop-shadow(3px 3px 3px rgba(0,0,0,.3));
+  }
+</style>
+</head>
+<body>
+	<!-- <div class="base-one-circle"></div> -->
+  <canvas id="canvas" width="600" height="300"></canvas>
+</body>
+<script type="text/javascript">
+const imageData = "data:image/png;base64,UklGRoQEAABXRUJQVlA4IHgEAAAQEwCdASpQAB4APn0ukUekoiGhNmqokA+JQBeS+t9mLAE3SfefAHxK+64wZwGyC97dgTyDt+/730A4vP9H4A3h3sAfnb0GPprzcfTPsD+Vh7GP289l39WW55D0NkbXRFsSxZeZ75QRdX0M5l8G/pkNwkwOqsJ8ZQaeOmnqN+iG2n8nWekCvYZ4hp76NqTE36uIOiWwS4TFcV7Dj9Hy/S8dAAD+/ZHlOKErnu4OVXVYlsGW9sNLNlYQNJy2OUt9y2qZ4xe0Ba+4VZKSi2dTmW9Vft9wbKkPYTINF54g0VQ8CwiLSSLpU5dF4ts4oqaBfNe27Lb9Ahsr7+UJeAP/DrZ0ag/4qO11b9ehgSoiFUIbOdDnBjuPKRts8Pq1ILBU9rQPVGiO3svx7CFE9wnYXqU1ZlEJjkclrY6FFcuMmUomJ5G5T9a/46N5DD8slf4z8vc24C3PSYQjcI1ebQo0NgUUKUACSDunduvXQCJEc+IiMuPqr7cr0EYP7zijHP4ZvyCLJfjavUPu//eyBqeG75K5Th05LxGQ/I12C12vVbMg6tMRoSllEZnE2U6IPxySk9xJMrap5iEMvhxwV9iWuvyu+pSPaFP3v7ZezwvMP3SWsGCC1ApBGiShzdVLnUZHTtrjhprDDWzDs5dOfEw6WT1ykFOH3VeEENzolUlForbx1bBYvasi1g9kjgzT5GTUmDh/vKGbfSxM4HCqeTHuCu0Uhz5NPKq5N7MPu9TSLQwSgvIdHMs6hne5GLJIHHPs1DveGCLsSA+RNVgqBSgoaU4oUgZtvZb58fmAoo1tHXp+/ubikx0Knf7vX5+S3YxMxhMBv+ePGQosn5HKELbB+BTMI6WXgtq9YbC6o56ejraFUso/8SwidkrCJ/l9GIvKZJWOoB8PQLcT/6n95P/8nh+N+X+UiIJfZQQZKJzZ8zuPG/XlpBP976jC+++jHOcADyi8pynsHxzci7llZqKqxF5ZyXqhQ7TZajTZ4YQgstJKcs7KGCNtQz2APCSLhLOlZX3V61+QjPvtxWZDSC9DnZDnfIg9i3rxRDAj7PpqhLuqN4PUlbKX3PnBag0D6hHAyIhRjRJxoR0QhjHqKhF5kdBf7kSN87FZdyUFggwXsoNelF7Bt3odK9Ry77rIFHtERrnqqEz1GOtj8aeTGcJlXxvhg8Hhp5h7jW0LtHJ/76YMwKQjSxAN9Cqol301EJY4zlrFT9Ef+M07SUvU4mkh0H4/jJr2zHYGBLWOe43WrjaP/bPSpGi5om5nKa/Td1F+FXeopWmevdi1rYIIUCEauF7Xn/DjQQ0x0PmVj/f+3L7Pq0D2k6VuFO8W6rLiDvWqlNrGx0x8v+KGebP1ysRsPmA1o9OB46yLOmtEcJ827TXHpOLBSXxPGZwG5zl/jOFfZQOCXxgrjxkryEQ49Q/4hcJc/KwtOvcyUICEGKmtmkKj7wRAlFpkhyyAImeUmtFDWsCC7lg8XeuNFZdNLmutLv/aRyV714hP0hxqLVNiBXxW5wWXOegBQAAA";
+  // 支持base64数据或本地图片路径
+async function getImageData(imageSrc) {
+  const image = new Image();
+  image.src = imageSrc;
+  // 等待图片加载完成
+  await new Promise(resolve => {
+    image.onload = resolve;
+  });
+  // 创建canvas
+  const canvas = document.createElement('canvas');
+  const context = canvas.getContext('2d');
+  context.drawImage(image, 0, 0);
+  return context.getImageData(0, 0, image.width, image.height);
+}
+const threshold = [240, 240, 240];
+
+// 返回每一项都是0或1的二维数组
+function binarization(imageData) {
+  const pixel2binary = pixel => 
+    pixel.every((chValue, index) => chValue > threshold[index]) ? '0' : '1';
+  
+  // data中每4位表示一个像素
+  const { data, width, height } = imageData;
+  const binaryData = [];
+  let x, y, row, rowLoc, pixel, pixelLoc;
+  for (y = 0; y < height; y++) {
+    row = [];
+    // 当前行起始位置
+    rowLoc = y * width * 4;
+    for (x = 0; x < width; x++) {
+      pixelLoc = rowLoc + x * 4;
+      //console.log(pixelLoc);
+      //console.log(data);
+      // 取该点的rgb色值
+      pixel = data.slice(pixelLoc, pixelLoc + 3);
+      console.log(pixel);
+      const rowData = pixel2binary(pixel);
+      console.log(rowData);
+      row.push(rowData);
+    }
+    binaryData.push(row);
+  }
+  return binaryData;
+}
+
+function drawBinaryData(data, scale = 1) {
+  denoising(data);
+  //cutWhiteEdge(data);
+  const binary2pixel = binary => 
+    binary === '0' ? [255, 255, 255, 255] : [0, 0, 0, 255];
+  const repeatAction = (action) => {
+    for (let i = 0; i < scale; i++) action();
+  };
+  const h = data.length;
+  const w = data[0].length;
+  let x, y, row;
+  const pixelData = [];
+  for (y = 0; y < h; y++) repeatAction(() => {
+    for (x = 0; x < w; x++) repeatAction(() => {
+      pixelData.push(...binary2pixel(data[y][x]));
+    });
+  });
+  // 创建ImageData实例
+  const imageData = new ImageData(
+    Uint8ClampedArray.from(pixelData),
+    w * scale,
+    h * scale
+  );
+  //context.drawImage(imageData,100,100);
+  return imageData;
+}
+
+function huidu(ctx,imageData) {
+  const { data, width, height } = imageData;
+  const h = data.length;
+  const pixelData = [];
+  for( var i = 0; i < h; i += 4 ) {
+     avg = ( data[i] + data[i+1] + data[i+2] ) / 2;
+     pixelData.push(avg);
+     pixelData.push(avg);
+     pixelData.push(avg);
+     pixelData.push(data[i+3]);
+ }
+
+ //console.log(pixelData);
+ const imageData1 = new ImageData(
+    Uint8ClampedArray.from(pixelData),
+    width,
+    height
+  );
+  //context.drawImage(imageData,100,100);
+  return imageData1;
+}
+
+function denoising(binData) {
+  const h = binData.length;
+  const w = binData[0].length;
+  const isEffectivePoint = (x, y) => binData[y][x] === '1';
+  const checkAround = (x, y) => {
+    // 边界控制
+    const checkTop = y > 0;
+    const checkBottom = y < h - 1;
+    const checkLeft = x > 0;
+    const checkRight = x < w - 1;
+    
+    return (
+      (checkTop && isEffectivePoint(x, y - 1)) ||
+      (checkBottom && isEffectivePoint(x, y + 1)) ||
+      (checkLeft && isEffectivePoint(x - 1, y)) || 
+      (checkRight && isEffectivePoint(x + 1, y))
+    );
+  };
+  
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      if (isEffectivePoint(x, y) && !checkAround(x, y)) {
+        // 将噪点置为无效点
+        binData[y][x] = '0';
+      }
+    }
+  } 
+}
+
+function cutWhiteEdge(data) {
+  let edge;
+  const isWhiteEdge = () => 
+    edge.every(binary => binary === '0');
+  // 连续切边
+  const cutEdgeContinuous = (resetEdge, cutEdge) => {
+    const _resetEdge = () => (edge = resetEdge());
+    for (_resetEdge(); isWhiteEdge(); cutEdge(), _resetEdge());
+  };
+  // 切边顺序：上下左右
+  // 上
+  cutEdgeContinuous(
+    () => data[0],
+    () => data.shift()
+  );
+  // 下
+  cutEdgeContinuous(
+    () => data[data.length - 1],
+    () => data.pop()
+  );
+  // 左
+  cutEdgeContinuous(
+    () => data.map(r => r[0]),
+    () => data.forEach(r => r.shift())
+  );
+  // 右
+  cutEdgeContinuous(
+    () => data.map(r => r[r.length - 1]),
+    () => data.forEach(r => r.pop())
+  );
+}
+
+// 返回是否匹配，匹配个数，匹配位置
+function convolution(binaryData, threshold = 1) {
+  const codes = Object.keys(CODE_TEMPLATES);
+  const h = binaryData.length;
+  const w = binaryData[0].length;
+  const matches = [];
+  let code, tplData, tplH, tplW;
+
+  function doConvolution() {
+    let x, y, colLastIdx, rowLastIdx;
+
+    // 返回1的个数，重合个数，重合百分比(相似度)
+    const compare = (x, y, code) => {
+      let effectivePointNum = 0;
+      for (let i = 0; i < tplH; i++) {
+        for (let j = 0; j < tplW; j++) {
+          if (tplData[i][j] === '1') {
+            if (tplData[i][j] === binaryData[i + y][j + x]) {
+              effectivePointNum++;
+            }
+          }
+        }
+      }
+      // 相似度 = 重合点数/字符模板有效点数
+      const similarity = effectivePointNum / tplEffectPoints[code];
+      return { x, y, similarity };
+    };
+
+    // 卷积方向：从左往右，从上往下
+    for (y = 0, rowLastIdx = h - tplH; y <= rowLastIdx; y++) {
+      for (x = 0, colLastIdx = w - tplW; x <= colLastIdx; x++) {
+        const result = compare(x, y, code);
+        if (result.similarity >= threshold) {
+          matches.push({ ...result, code });
+        }
+      }
+    }
+  }
+
+  for (let i = 0; i < codes.length; i++) {
+    code = codes[i];
+    // 将模板转成二维数组
+    tplData = CODE_TEMPLATES[code].split(' ').map(row => row.split(''));
+    tplH = tplData.length;
+    tplW = tplData[0].length;
+    doConvolution();
+  }
+  // 按位置(x轴)排序
+  matches.sort((a, b) => a.x - b.x);
+  return matches;
+}
+
+var image = getImageData(imageData);
+image.then(data => {
+  // 0. 获取到页面上的 canvas 标签元素节点
+  const canvasEle = document.getElementById('canvas');
+
+  // 1. 获取当前这个画布的工具箱
+  // 语法: canvas 元素.getContext('2d')
+  const ctx = canvasEle.getContext('2d');
+  //console.log(data);
+  const imageDataTwo = huidu(ctx,data);
+  ctx.putImageData(imageDataTwo, 0, 0);
+  const imageDataBinary = binarization(imageDataTwo);
+  console.log("二维数组")
+  console.log(imageDataBinary);
+  
+  const imageDataThree = drawBinaryData(imageDataBinary,4);
+  console.log(imageDataThree);
+  ctx.putImageData(imageDataThree, 100, 100);
+
+});
+</script>
+</html>
